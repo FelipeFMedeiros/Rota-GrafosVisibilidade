@@ -4,6 +4,15 @@
 
 Este projeto academico foi desenvolvido como parte do **Trabalho T3** da disciplina de **Teoria dos Grafos 2025.1**. O objetivo é explorar e aplicar conceitos de teoria dos grafos no planejamento de rotas utilizando **Grafos de Visibilidade** em um ambiente de 875m² (25m × 35m) contendo diversos obstáculos.
 
+## 📸 Preview do Projeto
+🔗 **[Ver Projeto Online](https://rota-grafos-visibilidade.vercel.app/)**
+
+*Acesse a aplicação em funcionamento para explorar o ambiente interativo*
+
+![Screenshot do Mapa Quadriculado](./public/screenshot.png)
+
+*Visualização do ambiente 25m × 35m com obstáculos mapeados*
+
 ## 🎯 Objetivo
 
 Desenvolver uma solução algorítmica baseada em Teoria dos Grafos que permita obter uma rota otimizada entre dois pontos em um ambiente com obstáculos, aplicando heurísticas vistas na disciplina.
