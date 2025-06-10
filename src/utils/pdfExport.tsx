@@ -71,6 +71,7 @@ export const exportToPDF = (width: number, height: number, obstacles: unknown[] 
       
       <!-- Obstáculos (serão adicionados futuramente) -->
       ${obstacles
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
           .map((obstacle) => {
               // Lógica para renderizar obstáculos no futuro
               return '';
