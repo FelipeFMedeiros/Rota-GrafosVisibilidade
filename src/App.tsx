@@ -2,7 +2,7 @@ import React from 'react';
 import { exportToPDF } from './utils/pdfExport';
 import GridViewModal from './components/GridViewModal';
 import { gridValues, obstacles } from './config/values';
-import { obstaclePositions, type ObstaclePosition } from './config/obstaclePositions';
+import { obstaclePositions } from './config/obstaclePositions';
 
 const App: React.FC = () => {
     const [isExporting, setIsExporting] = React.useState(false);
@@ -29,30 +29,6 @@ const App: React.FC = () => {
             console.error('Error in export:', error);
             setIsExporting(false);
         }
-    };
-
-    // Função para verificar se uma célula está ocupada por um obstáculo
-    const getCellObstacle = (x: number, y: number): ObstaclePosition | null => {
-        for (const obstacle of obstaclePositions) {
-            const obstacleRight = obstacle.x + obstacle.width;
-            const obstacleBottom = obstacle.y + obstacle.height;
-
-            if (x >= obstacle.x && x < obstacleRight && y >= obstacle.y && y < obstacleBottom) {
-                return obstacle;
-            }
-        }
-        return null;
-    };
-
-    // Função para verificar se uma célula é a primeira de um obstáculo (para mostrar label)
-    const shouldShowLabel = (obstacle: ObstaclePosition, x: number, y: number): boolean => {
-        // Para cadeiras, sempre mostrar label se estiver na posição aproximada
-        if (obstacle.type === 'cadeira') {
-            const deltaX = Math.abs(x - obstacle.x);
-            const deltaY = Math.abs(y - obstacle.y);
-            return deltaX < 1 && deltaY < 1;
-        }
-        return Math.floor(x) === Math.floor(obstacle.x) && Math.floor(y) === Math.floor(obstacle.y);
     };
 
     // Calcula a área total uma vez para uso em vários locais
@@ -95,6 +71,7 @@ const App: React.FC = () => {
 
                                 {/* Grid com obstáculos */}
                                 <div className="relative">
+                                    {/* Grid base (células vazias) */}
                                     {cells.map((row, rowIndex) => (
                                         <div key={rowIndex} className="flex">
                                             {/* Coordenada Y (lateral esquerda) */}
@@ -102,71 +79,79 @@ const App: React.FC = () => {
                                                 {rowIndex}
                                             </div>
 
-                                            {/* Células do grid */}
-                                            {row.map((cell, colIndex) => {
-                                                const obstacle = getCellObstacle(colIndex, rowIndex);
-                                                const isObstacle = obstacle !== null;
-                                                const showLabel =
-                                                    obstacle && shouldShowLabel(obstacle, colIndex, rowIndex);
-
-                                                // Usar minDisplaySize se disponível para melhor visualização
-                                                const displayWidth =
-                                                    obstacle?.minDisplaySize?.width || obstacle?.width || 1;
-                                                const displayHeight =
-                                                    obstacle?.minDisplaySize?.height || obstacle?.height || 1;
-
-                                                return (
-                                                    <div
-                                                        key={`${cell.row}-${cell.col}`}
-                                                        className={`w-4 h-4 border border-gray-300 transition-colors relative ${
-                                                            isObstacle
-                                                                ? 'cursor-default'
-                                                                : 'hover:bg-blue-100 cursor-pointer'
-                                                        }`}
-                                                        style={{
-                                                            backgroundColor: isObstacle
-                                                                ? obstacle.color
-                                                                : 'transparent',
-                                                        }}
-                                                        title={
-                                                            isObstacle
-                                                                ? `${obstacle.id} - ${obstacle.label.replace(
-                                                                      '\n',
-                                                                      ' ',
-                                                                  )} (${obstacle.width.toFixed(
-                                                                      2,
-                                                                  )}m x ${obstacle.height.toFixed(2)}m)`
-                                                                : `Posição: (${colIndex}, ${rowIndex})`
-                                                        }
-                                                    >
-                                                        {showLabel && obstacle && obstacle.label && (
-                                                            <div
-                                                                className="absolute top-0 left-0 text-xs font-bold text-gray-800 pointer-events-none flex items-center justify-center"
-                                                                style={{
-                                                                    fontSize:
-                                                                        obstacle.type === 'cadeira' ? '8px' : '6px',
-                                                                    lineHeight: '1',
-                                                                    width: `${Math.max(displayWidth * 16, 16)}px`,
-                                                                    height: `${Math.max(displayHeight * 16, 16)}px`,
-                                                                    textAlign: 'center',
-                                                                    whiteSpace: 'pre-line',
-                                                                    zIndex: 5,
-                                                                    backgroundColor:
-                                                                        obstacle.type === 'cadeira'
-                                                                            ? 'rgba(255,255,255,0.8)'
-                                                                            : 'transparent',
-                                                                    borderRadius:
-                                                                        obstacle.type === 'cadeira' ? '2px' : '0',
-                                                                }}
-                                                            >
-                                                                {obstacle.label}
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                );
-                                            })}
+                                            {/* Células do grid vazias */}
+                                            {row.map((cell, colIndex) => (
+                                                <div
+                                                    key={`${cell.row}-${cell.col}`}
+                                                    className="w-4 h-4 border border-gray-300 hover:bg-blue-100 cursor-pointer transition-colors"
+                                                    title={`Posição: (${colIndex}, ${rowIndex})`}
+                                                />
+                                            ))}
                                         </div>
                                     ))}
+
+                                    {/* Obstáculos renderizados como elementos absolutos */}
+                                    {obstaclePositions.map((obstacle) => {
+                                        const left = 32 + obstacle.x * 16; // 32px = w-8 (coordenadas Y) + obstacle.x * 16px (w-4)
+                                        const top = obstacle.y * 16; // obstacle.y * 16px (h-4)
+                                        const width = obstacle.width * 16; // largura real * 16px
+                                        const height = obstacle.height * 16; // altura real * 16px
+
+                                        return (
+                                            <div
+                                                key={obstacle.id}
+                                                className="absolute pointer-events-none border border-gray-600"
+                                                style={{
+                                                    left: `${left}px`,
+                                                    top: `${top}px`,
+                                                    width: `${width}px`,
+                                                    height: `${height}px`,
+                                                    backgroundColor: obstacle.color,
+                                                    opacity: 0.8,
+                                                    zIndex: 5,
+                                                }}
+                                                title={`${obstacle.id} - ${obstacle.label.replace(
+                                                    '\n',
+                                                    ' ',
+                                                )} (${obstacle.width.toFixed(2)}m x ${obstacle.height.toFixed(2)}m)`}
+                                            >
+                                                {/* Label do obstáculo */}
+                                                <div
+                                                    className="absolute inset-0 flex items-center justify-center text-gray-800 font-bold pointer-events-none"
+                                                    style={{
+                                                        fontSize:
+                                                            obstacle.type === 'cadeira'
+                                                                ? '8px'
+                                                                : width < 50
+                                                                ? '6px'
+                                                                : '9px',
+                                                        lineHeight: '1.1',
+                                                        textAlign: 'center',
+                                                        whiteSpace: 'pre-line',
+                                                        textShadow:
+                                                            obstacle.type === 'cadeira' ? '0 0 2px white' : 'none',
+                                                        color: obstacle.type === 'cadeira' ? '#000' : '#333',
+                                                    }}
+                                                >
+                                                    {obstacle.label}
+                                                </div>
+
+                                                {/* Círculo especial para cadeiras (como no PDF) */}
+                                                {obstacle.type === 'cadeira' && (
+                                                    <div
+                                                        className="absolute rounded-full bg-gray-700 opacity-60"
+                                                        style={{
+                                                            width: `${Math.min(width, height) / 3}px`,
+                                                            height: `${Math.min(width, height) / 3}px`,
+                                                            left: '50%',
+                                                            top: '50%',
+                                                            transform: 'translate(-50%, -50%)',
+                                                        }}
+                                                    />
+                                                )}
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                             </div>
                         </div>

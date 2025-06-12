@@ -1,5 +1,6 @@
-import React, { useEffect, useRef, useState, useCallback, memo } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { type ObstaclePosition } from '../config/obstaclePositions';
+import { gridValues } from '../config/values';
 
 interface GridViewModalProps {
     isOpen: boolean;
@@ -8,112 +9,6 @@ interface GridViewModalProps {
     height: number;
     obstacles?: ObstaclePosition[];
 }
-
-// Componente para célula individual do grid (memoizado)
-const GridCell = memo(
-    ({
-        colIndex,
-        rowIndex,
-        obstacle,
-        showLabel,
-    }: {
-        colIndex: number;
-        rowIndex: number;
-        obstacle: ObstaclePosition | null;
-        showLabel: boolean;
-    }) => {
-        const isObstacle = obstacle !== null;
-
-        return (
-            <div
-                className={`border border-gray-300 transition-colors relative ${
-                    isObstacle ? 'cursor-default' : 'hover:bg-blue-100'
-                }`}
-                style={{
-                    width: '20px',
-                    height: '20px',
-                    backgroundColor: isObstacle ? obstacle.color : 'transparent',
-                }}
-                title={
-                    isObstacle
-                        ? `${obstacle.id} - ${obstacle.label.replace('\n', ' ')} (${obstacle.width.toFixed(
-                              2,
-                          )}m x ${obstacle.height.toFixed(2)}m)`
-                        : `Posição: (${colIndex}, ${rowIndex})`
-                }
-            >
-                {showLabel && obstacle && obstacle.label && (
-                    <div
-                        className="absolute top-0 left-0 text-xs font-bold text-gray-800 pointer-events-none flex items-center justify-center"
-                        style={{
-                            fontSize: obstacle.type === 'cadeira' ? '10px' : '8px',
-                            lineHeight: '1',
-                            width: `${Math.max((obstacle.minDisplaySize?.width || obstacle.width) * 20, 20)}px`,
-                            height: `${Math.max((obstacle.minDisplaySize?.height || obstacle.height) * 20, 20)}px`,
-                            textAlign: 'center',
-                            whiteSpace: 'pre-line',
-                            zIndex: 5,
-                            backgroundColor: obstacle.type === 'cadeira' ? 'rgba(255,255,255,0.9)' : 'transparent',
-                            borderRadius: obstacle.type === 'cadeira' ? '3px' : '0',
-                            border: obstacle.type === 'cadeira' ? '1px solid #333' : 'none',
-                        }}
-                    >
-                        {obstacle.label}
-                    </div>
-                )}
-            </div>
-        );
-    },
-);
-
-// Componente para linha do grid (memoizado)
-const GridRow = memo(
-    ({
-        row,
-        rowIndex,
-        cellSize,
-        getCellObstacle,
-        shouldShowLabel,
-    }: {
-        row: { row: number; col: number }[];
-        rowIndex: number;
-        cellSize: number;
-        obstacles: ObstaclePosition[];
-        getCellObstacle: (x: number, y: number) => ObstaclePosition | null;
-        shouldShowLabel: (obstacle: ObstaclePosition, x: number, y: number) => boolean;
-    }) => {
-        return (
-            <div className="flex">
-                {/* Coordenada Y (lateral esquerda) */}
-                <div
-                    className="text-xs flex items-center justify-center text-gray-600 bg-gray-100 border-r border-gray-300 font-mono"
-                    style={{
-                        width: `${cellSize * 2}px`,
-                        height: `${cellSize}px`,
-                    }}
-                >
-                    {rowIndex}
-                </div>
-
-                {/* Células do grid */}
-                {row.map((_, colIndex) => {
-                    const obstacle = getCellObstacle(colIndex, rowIndex);
-                    const showLabel = !!(obstacle && shouldShowLabel(obstacle, colIndex, rowIndex));
-
-                    return (
-                        <GridCell
-                            key={`cell-${rowIndex}-${colIndex}`}
-                            colIndex={colIndex}
-                            rowIndex={rowIndex}
-                            obstacle={obstacle}
-                            showLabel={showLabel}
-                        />
-                    );
-                })}
-            </div>
-        );
-    },
-);
 
 const GridViewModal: React.FC<GridViewModalProps> = ({ isOpen, onClose, width, height, obstacles = [] }) => {
     const [zoom, setZoom] = useState(1);
@@ -149,33 +44,6 @@ const GridViewModal: React.FC<GridViewModalProps> = ({ isOpen, onClose, width, h
         () => Array.from({ length: height }, (_, row) => Array.from({ length: width }, (_, col) => ({ row, col }))),
         [height, width],
     );
-
-    // Função para verificar se uma célula está ocupada por um obstáculo
-    const getCellObstacle = useCallback(
-        (x: number, y: number): ObstaclePosition | null => {
-            for (const obstacle of obstacles) {
-                const obstacleRight = obstacle.x + obstacle.width;
-                const obstacleBottom = obstacle.y + obstacle.height;
-
-                if (x >= obstacle.x && x < obstacleRight && y >= obstacle.y && y < obstacleBottom) {
-                    return obstacle;
-                }
-            }
-            return null;
-        },
-        [obstacles],
-    );
-
-    // Função para verificar se uma célula é a primeira de um obstáculo (para mostrar label)
-    const shouldShowLabel = useCallback((obstacle: ObstaclePosition, x: number, y: number): boolean => {
-        // Para cadeiras, sempre mostrar label se estiver na posição aproximada
-        if (obstacle.type === 'cadeira') {
-            const deltaX = Math.abs(x - obstacle.x);
-            const deltaY = Math.abs(y - obstacle.y);
-            return deltaX < 1 && deltaY < 1;
-        }
-        return Math.floor(x) === Math.floor(obstacle.x) && Math.floor(y) === Math.floor(obstacle.y);
-    }, []);
 
     // Controles de zoom (memoizados para evitar recriações)
     const handleZoomIn = useCallback(() => {
@@ -316,7 +184,7 @@ const GridViewModal: React.FC<GridViewModalProps> = ({ isOpen, onClose, width, h
 
     if (!isOpen) return null;
 
-    const cellSize = 20; // Tamanho base da célula
+    const cellSize = gridValues.cellSize; // Tamanho base da célula
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-75 z-50 flex items-center justify-center">
@@ -411,10 +279,10 @@ const GridViewModal: React.FC<GridViewModalProps> = ({ isOpen, onClose, width, h
                             willChange: 'transform',
                         }}
                     >
-                        {/* Coordenadas superiores (X) - otimizadas */}
+                        {/* Coordenadas superiores (X) */}
                         <div className="flex mb-2">
                             <div style={{ width: `${cellSize * 2}px` }}></div>
-                            {Array.from({ length: Math.min(width, 100) }, (_, i) => (
+                            {Array.from({ length: width }, (_, i) => (
                                 <div
                                     key={i}
                                     className="text-xs text-center text-gray-600 font-mono flex items-center justify-center"
@@ -428,19 +296,94 @@ const GridViewModal: React.FC<GridViewModalProps> = ({ isOpen, onClose, width, h
                             ))}
                         </div>
 
-                        {/* Grid principal com coordenadas laterais - otimizado */}
-                        <div className="border-2 border-gray-800 bg-white">
+                        {/* Grid principal com coordenadas laterais */}
+                        <div className="border-2 border-gray-800 bg-white relative">
+                            {/* Grid base (células vazias) */}
                             {cells.map((row, rowIndex) => (
-                                <GridRow
-                                    key={`row-${rowIndex}`}
-                                    row={row}
-                                    rowIndex={rowIndex}
-                                    cellSize={cellSize}
-                                    obstacles={obstacles}
-                                    getCellObstacle={getCellObstacle}
-                                    shouldShowLabel={shouldShowLabel}
-                                />
+                                <div key={rowIndex} className="flex">
+                                    {/* Coordenada Y (lateral esquerda) */}
+                                    <div
+                                        className="text-xs flex items-center justify-center text-gray-600 bg-gray-100 border-r border-gray-300 font-mono"
+                                        style={{
+                                            width: `${cellSize * 2}px`,
+                                            height: `${cellSize}px`,
+                                        }}
+                                    >
+                                        {rowIndex}
+                                    </div>
+
+                                    {/* Células do grid vazias */}
+                                    {row.map((cell, colIndex) => (
+                                        <div
+                                            key={`${cell.row}-${cell.col}`}
+                                            className="border border-gray-300 hover:bg-blue-100 cursor-pointer transition-colors"
+                                            style={{
+                                                width: `${cellSize}px`,
+                                                height: `${cellSize}px`,
+                                            }}
+                                            title={`Posição: (${colIndex}, ${rowIndex})`}
+                                        />
+                                    ))}
+                                </div>
                             ))}
+
+                            {/* Obstáculos renderizados como elementos absolutos */}
+                            {obstacles.map((obstacle) => {
+                                const left = cellSize * 2 + obstacle.x * cellSize; // cellSize * 2 = largura das coordenadas Y
+                                const top = obstacle.y * cellSize;
+                                const width = obstacle.width * cellSize;
+                                const height = obstacle.height * cellSize;
+
+                                return (
+                                    <div
+                                        key={obstacle.id}
+                                        className="absolute pointer-events-none border border-gray-600"
+                                        style={{
+                                            left: `${left}px`,
+                                            top: `${top}px`,
+                                            width: `${width}px`,
+                                            height: `${height}px`,
+                                            backgroundColor: obstacle.color,
+                                            opacity: 0.8,
+                                            zIndex: 5,
+                                        }}
+                                        title={`${obstacle.id} - ${obstacle.label.replace(
+                                            '\n',
+                                            ' ',
+                                        )} (${obstacle.width.toFixed(2)}m x ${obstacle.height.toFixed(2)}m)`}
+                                    >
+                                        {/* Label do obstáculo */}
+                                        <div
+                                            className="absolute inset-0 flex items-center justify-center text-gray-800 font-bold pointer-events-none"
+                                            style={{
+                                                fontSize:
+                                                    obstacle.type === 'cadeira' ? '10px' : width < 60 ? '8px' : '12px',
+                                                lineHeight: '1.1',
+                                                textAlign: 'center',
+                                                whiteSpace: 'pre-line',
+                                                textShadow: obstacle.type === 'cadeira' ? '0 0 2px white' : 'none',
+                                                color: obstacle.type === 'cadeira' ? '#000' : '#333',
+                                            }}
+                                        >
+                                            {obstacle.label}
+                                        </div>
+
+                                        {/* Círculo especial para cadeiras (como no PDF) */}
+                                        {obstacle.type === 'cadeira' && (
+                                            <div
+                                                className="absolute rounded-full bg-gray-700 opacity-60"
+                                                style={{
+                                                    width: `${Math.min(width, height) / 3}px`,
+                                                    height: `${Math.min(width, height) / 3}px`,
+                                                    left: '50%',
+                                                    top: '50%',
+                                                    transform: 'translate(-50%, -50%)',
+                                                }}
+                                            />
+                                        )}
+                                    </div>
+                                );
+                            })}
                         </div>
                     </div>
                 </div>
