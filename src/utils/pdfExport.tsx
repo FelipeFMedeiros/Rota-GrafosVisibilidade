@@ -1,11 +1,47 @@
 import jsPDF from 'jspdf';
 import { gridValues } from '../config/values';
+import { type ObstaclePosition } from '../config/obstaclePositions';
 
-export const exportToPDF = (width: number, height: number, obstacles: unknown[] = []) => {
+export const exportToPDF = (width: number, height: number, obstacles: ObstaclePosition[] = []) => {
     const cellSize = gridValues.cellSize; // Tamanho da célula em pixels para o PDF
     const margin = gridValues.margin; // Margem do documento
     const gridWidth = width * cellSize;
     const gridHeight = height * cellSize;
+
+    // Gerar SVG dos obstáculos
+    const obstaclesSVG = obstacles
+        .map((obstacle) => {
+            const x = margin + obstacle.x * cellSize;
+            const y = margin + obstacle.y * cellSize;
+            const obstacleWidth = obstacle.width * cellSize;
+            const obstacleHeight = obstacle.height * cellSize;
+
+            // Para cadeiras, usar um visual diferenciado
+            const isChair = obstacle.type === 'cadeira';
+            const strokeWidth = isChair ? '2' : '1';
+            const opacity = isChair ? '0.9' : '0.8';
+
+            return `
+            <!-- Obstáculo: ${obstacle.id} -->
+            <rect x="${x}" y="${y}" width="${obstacleWidth}" height="${obstacleHeight}" 
+                  fill="${obstacle.color}" stroke="#333" stroke-width="${strokeWidth}" opacity="${opacity}" />
+            ${
+                isChair
+                    ? `
+            <circle cx="${x + obstacleWidth / 2}" cy="${y + obstacleHeight / 2}" r="${
+                          Math.min(obstacleWidth, obstacleHeight) / 4
+                      }" 
+                    fill="#333" opacity="0.6" />
+            `
+                    : ''
+            }
+            <text x="${x + obstacleWidth / 2}" y="${y + obstacleHeight / 2}" 
+                  class="${isChair ? 'chair-text' : 'obstacle-text'}" text-anchor="middle" dominant-baseline="middle">
+                ${obstacle.label.replace('\n', ' ')}
+            </text>
+        `;
+        })
+        .join('');
 
     // Criar SVG do grid para adicionar ao PDF
     const svgContent = `
@@ -17,6 +53,8 @@ export const exportToPDF = (width: number, height: number, obstacles: unknown[] 
           .coordinate-text { font-family: Arial, sans-serif; font-size: 10px; fill: #666; }
           .title-text { font-family: Arial, sans-serif; font-size: 16px; fill: #000; font-weight: bold; }
           .info-text { font-family: Arial, sans-serif; font-size: 12px; fill: #333; }
+          .obstacle-text { font-family: Arial, sans-serif; font-size: 9px; fill: #333; font-weight: bold; }
+          .chair-text { font-family: Arial, sans-serif; font-size: 8px; fill: #fff; font-weight: bold; }
         </style>
       </defs>
       
@@ -27,7 +65,9 @@ export const exportToPDF = (width: number, height: number, obstacles: unknown[] 
       
       <!-- Informações -->
       <text x="${margin}" y="${gridHeight + margin + 30}" class="info-text">
-        Escala: 1 quadrado = 1 metro | Área total: 875m² | Coordenadas: X(0-24), Y(0-34)
+        Escala: 1 quadrado = 1 metro | Área total: 875m² | Coordenadas: X(0-24), Y(0-34) | Obstáculos: ${
+            obstacles.length
+        }
       </text>
       
       <!-- Grid lines verticais -->
@@ -47,6 +87,9 @@ export const exportToPDF = (width: number, height: number, obstacles: unknown[] 
                   margin + i * cellSize
               }" class="grid-line" />`,
       ).join('')}
+      
+      <!-- Obstáculos -->
+      ${obstaclesSVG}
       
       <!-- Borda externa -->
       <rect x="${margin}" y="${margin}" width="${gridWidth}" height="${gridHeight}" fill="none" class="border-line" />
@@ -68,14 +111,6 @@ export const exportToPDF = (width: number, height: number, obstacles: unknown[] 
                   margin + i * cellSize + cellSize / 2 + 3
               }" class="coordinate-text" text-anchor="middle">${i}</text>`,
       ).join('')}
-      
-      <!-- Obstáculos (serão adicionados futuramente) -->
-      ${obstacles
-          .map((/*obstacle*/) => {
-              // Lógica para renderizar obstáculos no futuro
-              return '';
-          })
-          .join('')}
     </svg>
   `;
 
@@ -111,7 +146,7 @@ export const exportToPDF = (width: number, height: number, obstacles: unknown[] 
                 pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
 
                 // Salvar PDF
-                pdf.save('mapa-quadriculado.pdf');
+                pdf.save('mapa-quadriculado-com-obstaculos.pdf');
 
                 // Limpar recursos
                 URL.revokeObjectURL(url);

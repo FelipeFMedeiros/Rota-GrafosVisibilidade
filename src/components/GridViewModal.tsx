@@ -1,29 +1,87 @@
 import React, { useEffect, useRef, useState, useCallback, memo } from 'react';
+import { type ObstaclePosition } from '../config/obstaclePositions';
 
 interface GridViewModalProps {
     isOpen: boolean;
     onClose: () => void;
     width: number;
     height: number;
+    obstacles?: ObstaclePosition[];
 }
 
 // Componente para célula individual do grid (memoizado)
-const GridCell = memo(({ colIndex, rowIndex }: { colIndex: number; rowIndex: number }) => {
-    return (
-        <div
-            className="border border-gray-300 hover:bg-blue-100 transition-colors"
-            style={{
-                width: '20px',
-                height: '20px',
-            }}
-            title={`Posição: (${colIndex}, ${rowIndex})`}
-        />
-    );
-});
+const GridCell = memo(
+    ({
+        colIndex,
+        rowIndex,
+        obstacle,
+        showLabel,
+    }: {
+        colIndex: number;
+        rowIndex: number;
+        obstacle: ObstaclePosition | null;
+        showLabel: boolean;
+    }) => {
+        const isObstacle = obstacle !== null;
+
+        return (
+            <div
+                className={`border border-gray-300 transition-colors relative ${
+                    isObstacle ? 'cursor-default' : 'hover:bg-blue-100'
+                }`}
+                style={{
+                    width: '20px',
+                    height: '20px',
+                    backgroundColor: isObstacle ? obstacle.color : 'transparent',
+                }}
+                title={
+                    isObstacle
+                        ? `${obstacle.id} - ${obstacle.label.replace('\n', ' ')} (${obstacle.width.toFixed(
+                              2,
+                          )}m x ${obstacle.height.toFixed(2)}m)`
+                        : `Posição: (${colIndex}, ${rowIndex})`
+                }
+            >
+                {showLabel && obstacle && obstacle.label && (
+                    <div
+                        className="absolute top-0 left-0 text-xs font-bold text-gray-800 pointer-events-none flex items-center justify-center"
+                        style={{
+                            fontSize: obstacle.type === 'cadeira' ? '10px' : '8px',
+                            lineHeight: '1',
+                            width: `${Math.max((obstacle.minDisplaySize?.width || obstacle.width) * 20, 20)}px`,
+                            height: `${Math.max((obstacle.minDisplaySize?.height || obstacle.height) * 20, 20)}px`,
+                            textAlign: 'center',
+                            whiteSpace: 'pre-line',
+                            zIndex: 5,
+                            backgroundColor: obstacle.type === 'cadeira' ? 'rgba(255,255,255,0.9)' : 'transparent',
+                            borderRadius: obstacle.type === 'cadeira' ? '3px' : '0',
+                            border: obstacle.type === 'cadeira' ? '1px solid #333' : 'none',
+                        }}
+                    >
+                        {obstacle.label}
+                    </div>
+                )}
+            </div>
+        );
+    },
+);
 
 // Componente para linha do grid (memoizado)
 const GridRow = memo(
-    ({ row, rowIndex, cellSize }: { row: { row: number; col: number }[]; rowIndex: number; cellSize: number }) => {
+    ({
+        row,
+        rowIndex,
+        cellSize,
+        getCellObstacle,
+        shouldShowLabel,
+    }: {
+        row: { row: number; col: number }[];
+        rowIndex: number;
+        cellSize: number;
+        obstacles: ObstaclePosition[];
+        getCellObstacle: (x: number, y: number) => ObstaclePosition | null;
+        shouldShowLabel: (obstacle: ObstaclePosition, x: number, y: number) => boolean;
+    }) => {
         return (
             <div className="flex">
                 {/* Coordenada Y (lateral esquerda) */}
@@ -38,15 +96,26 @@ const GridRow = memo(
                 </div>
 
                 {/* Células do grid */}
-                {row.map((_, colIndex) => (
-                    <GridCell key={`cell-${rowIndex}-${colIndex}`} colIndex={colIndex} rowIndex={rowIndex} />
-                ))}
+                {row.map((_, colIndex) => {
+                    const obstacle = getCellObstacle(colIndex, rowIndex);
+                    const showLabel = !!(obstacle && shouldShowLabel(obstacle, colIndex, rowIndex));
+
+                    return (
+                        <GridCell
+                            key={`cell-${rowIndex}-${colIndex}`}
+                            colIndex={colIndex}
+                            rowIndex={rowIndex}
+                            obstacle={obstacle}
+                            showLabel={showLabel}
+                        />
+                    );
+                })}
             </div>
         );
     },
 );
 
-const GridViewModal: React.FC<GridViewModalProps> = ({ isOpen, onClose, width, height }) => {
+const GridViewModal: React.FC<GridViewModalProps> = ({ isOpen, onClose, width, height, obstacles = [] }) => {
     const [zoom, setZoom] = useState(1);
     const [pan, setPan] = useState({ x: 0, y: 0 });
     const [isDragging, setIsDragging] = useState(false);
@@ -80,6 +149,33 @@ const GridViewModal: React.FC<GridViewModalProps> = ({ isOpen, onClose, width, h
         () => Array.from({ length: height }, (_, row) => Array.from({ length: width }, (_, col) => ({ row, col }))),
         [height, width],
     );
+
+    // Função para verificar se uma célula está ocupada por um obstáculo
+    const getCellObstacle = useCallback(
+        (x: number, y: number): ObstaclePosition | null => {
+            for (const obstacle of obstacles) {
+                const obstacleRight = obstacle.x + obstacle.width;
+                const obstacleBottom = obstacle.y + obstacle.height;
+
+                if (x >= obstacle.x && x < obstacleRight && y >= obstacle.y && y < obstacleBottom) {
+                    return obstacle;
+                }
+            }
+            return null;
+        },
+        [obstacles],
+    );
+
+    // Função para verificar se uma célula é a primeira de um obstáculo (para mostrar label)
+    const shouldShowLabel = useCallback((obstacle: ObstaclePosition, x: number, y: number): boolean => {
+        // Para cadeiras, sempre mostrar label se estiver na posição aproximada
+        if (obstacle.type === 'cadeira') {
+            const deltaX = Math.abs(x - obstacle.x);
+            const deltaY = Math.abs(y - obstacle.y);
+            return deltaX < 1 && deltaY < 1;
+        }
+        return Math.floor(x) === Math.floor(obstacle.x) && Math.floor(y) === Math.floor(obstacle.y);
+    }, []);
 
     // Controles de zoom (memoizados para evitar recriações)
     const handleZoomIn = useCallback(() => {
@@ -335,7 +431,15 @@ const GridViewModal: React.FC<GridViewModalProps> = ({ isOpen, onClose, width, h
                         {/* Grid principal com coordenadas laterais - otimizado */}
                         <div className="border-2 border-gray-800 bg-white">
                             {cells.map((row, rowIndex) => (
-                                <GridRow key={`row-${rowIndex}`} row={row} rowIndex={rowIndex} cellSize={cellSize} />
+                                <GridRow
+                                    key={`row-${rowIndex}`}
+                                    row={row}
+                                    rowIndex={rowIndex}
+                                    cellSize={cellSize}
+                                    obstacles={obstacles}
+                                    getCellObstacle={getCellObstacle}
+                                    shouldShowLabel={shouldShowLabel}
+                                />
                             ))}
                         </div>
                     </div>

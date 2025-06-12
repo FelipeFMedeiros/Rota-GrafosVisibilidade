@@ -2,6 +2,7 @@ import React from 'react';
 import { exportToPDF } from './utils/pdfExport';
 import GridViewModal from './components/GridViewModal';
 import { gridValues, obstacles } from './config/values';
+import { obstaclePositions, type ObstaclePosition } from './config/obstaclePositions';
 
 const App: React.FC = () => {
     const [isExporting, setIsExporting] = React.useState(false);
@@ -17,7 +18,7 @@ const App: React.FC = () => {
 
         try {
             console.log('Starting PDF export...');
-            exportToPDF(gridValues.width, gridValues.height);
+            exportToPDF(gridValues.width, gridValues.height, obstaclePositions);
             console.log('PDF export function called');
 
             setTimeout(() => {
@@ -30,10 +31,32 @@ const App: React.FC = () => {
         }
     };
 
+    // Função para verificar se uma célula está ocupada por um obstáculo
+    const getCellObstacle = (x: number, y: number): ObstaclePosition | null => {
+        for (const obstacle of obstaclePositions) {
+            const obstacleRight = obstacle.x + obstacle.width;
+            const obstacleBottom = obstacle.y + obstacle.height;
+
+            if (x >= obstacle.x && x < obstacleRight && y >= obstacle.y && y < obstacleBottom) {
+                return obstacle;
+            }
+        }
+        return null;
+    };
+
+    // Função para verificar se uma célula é a primeira de um obstáculo (para mostrar label)
+    const shouldShowLabel = (obstacle: ObstaclePosition, x: number, y: number): boolean => {
+        // Para cadeiras, sempre mostrar label se estiver na posição aproximada
+        if (obstacle.type === 'cadeira') {
+            const deltaX = Math.abs(x - obstacle.x);
+            const deltaY = Math.abs(y - obstacle.y);
+            return deltaX < 1 && deltaY < 1;
+        }
+        return Math.floor(x) === Math.floor(obstacle.x) && Math.floor(y) === Math.floor(obstacle.y);
+    };
+
     // Calcula a área total uma vez para uso em vários locais
     const totalArea = gridValues.width * gridValues.height;
-
-    // ...existing code...
 
     return (
         <div className="p-6 bg-gray-50 min-h-screen">
@@ -55,7 +78,7 @@ const App: React.FC = () => {
                     <div className="lg:w-2/3">
                         {/* Container com scroll horizontal único para coordenadas e grid */}
                         <div className="overflow-x-auto bg-white border border-gray-300 rounded-lg shadow-sm">
-                            <div className="min-w-max">
+                            <div className="min-w-max relative">
                                 {/* Coordenadas superiores (X) - dentro do mesmo container de scroll */}
                                 <div className="flex mb-1">
                                     <div className="w-8"></div>
@@ -70,24 +93,81 @@ const App: React.FC = () => {
                                     ))}
                                 </div>
 
-                                {/* Grid */}
-                                {cells.map((row, rowIndex) => (
-                                    <div key={rowIndex} className="flex">
-                                        {/* Coordenada Y (lateral esquerda) */}
-                                        <div className="sticky left-0 w-8 h-4 text-xs flex items-center justify-center text-gray-500 bg-gray-100 z-10">
-                                            {rowIndex}
-                                        </div>
+                                {/* Grid com obstáculos */}
+                                <div className="relative">
+                                    {cells.map((row, rowIndex) => (
+                                        <div key={rowIndex} className="flex">
+                                            {/* Coordenada Y (lateral esquerda) */}
+                                            <div className="sticky left-0 w-8 h-4 text-xs flex items-center justify-center text-gray-500 bg-gray-100 z-10 border-r border-gray-300">
+                                                {rowIndex}
+                                            </div>
 
-                                        {/* Células do grid */}
-                                        {row.map((cell, colIndex) => (
-                                            <div
-                                                key={`${cell.row}-${cell.col}`}
-                                                className="w-4 h-4 border border-gray-300 hover:bg-blue-100 cursor-pointer transition-colors"
-                                                title={`Posição: (${colIndex}, ${rowIndex})`}
-                                            />
-                                        ))}
-                                    </div>
-                                ))}
+                                            {/* Células do grid */}
+                                            {row.map((cell, colIndex) => {
+                                                const obstacle = getCellObstacle(colIndex, rowIndex);
+                                                const isObstacle = obstacle !== null;
+                                                const showLabel =
+                                                    obstacle && shouldShowLabel(obstacle, colIndex, rowIndex);
+
+                                                // Usar minDisplaySize se disponível para melhor visualização
+                                                const displayWidth =
+                                                    obstacle?.minDisplaySize?.width || obstacle?.width || 1;
+                                                const displayHeight =
+                                                    obstacle?.minDisplaySize?.height || obstacle?.height || 1;
+
+                                                return (
+                                                    <div
+                                                        key={`${cell.row}-${cell.col}`}
+                                                        className={`w-4 h-4 border border-gray-300 transition-colors relative ${
+                                                            isObstacle
+                                                                ? 'cursor-default'
+                                                                : 'hover:bg-blue-100 cursor-pointer'
+                                                        }`}
+                                                        style={{
+                                                            backgroundColor: isObstacle
+                                                                ? obstacle.color
+                                                                : 'transparent',
+                                                        }}
+                                                        title={
+                                                            isObstacle
+                                                                ? `${obstacle.id} - ${obstacle.label.replace(
+                                                                      '\n',
+                                                                      ' ',
+                                                                  )} (${obstacle.width.toFixed(
+                                                                      2,
+                                                                  )}m x ${obstacle.height.toFixed(2)}m)`
+                                                                : `Posição: (${colIndex}, ${rowIndex})`
+                                                        }
+                                                    >
+                                                        {showLabel && obstacle && obstacle.label && (
+                                                            <div
+                                                                className="absolute top-0 left-0 text-xs font-bold text-gray-800 pointer-events-none flex items-center justify-center"
+                                                                style={{
+                                                                    fontSize:
+                                                                        obstacle.type === 'cadeira' ? '8px' : '6px',
+                                                                    lineHeight: '1',
+                                                                    width: `${Math.max(displayWidth * 16, 16)}px`,
+                                                                    height: `${Math.max(displayHeight * 16, 16)}px`,
+                                                                    textAlign: 'center',
+                                                                    whiteSpace: 'pre-line',
+                                                                    zIndex: 5,
+                                                                    backgroundColor:
+                                                                        obstacle.type === 'cadeira'
+                                                                            ? 'rgba(255,255,255,0.8)'
+                                                                            : 'transparent',
+                                                                    borderRadius:
+                                                                        obstacle.type === 'cadeira' ? '2px' : '0',
+                                                                }}
+                                                            >
+                                                                {obstacle.label}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
                         </div>
 
@@ -135,17 +215,21 @@ const App: React.FC = () => {
                             <h3 className="font-semibold text-gray-800 mb-2">Informações:</h3>
                             <ul className="text-sm text-gray-600 space-y-1">
                                 <li>
-                                    • <strong>Área total:</strong> {totalArea}m² ({gridValues.width}m × {gridValues.height}m)
+                                    • <strong>Área total:</strong> {totalArea}m² ({gridValues.width}m ×{' '}
+                                    {gridValues.height}m)
                                 </li>
                                 <li>
                                     • <strong>Cada célula:</strong> Representa 1m²
                                 </li>
                                 <li>
-                                    • <strong>Coordenadas:</strong> X (horizontal) de 0-{gridValues.width - 1}, Y (vertical) de
-                                    0-{gridValues.height - 1}
+                                    • <strong>Coordenadas:</strong> X (horizontal) de 0-{gridValues.width - 1}, Y
+                                    (vertical) de 0-{gridValues.height - 1}
                                 </li>
                                 <li>
-                                    • <strong>Visualização:</strong> Use o botão "Tela Cheia" para melhor visualização com zoom
+                                    • <strong>Obstáculos:</strong> {obstaclePositions.length} elementos posicionados
+                                </li>
+                                <li>
+                                    • <strong>Visualização:</strong> Use o botão "Visualizar" para ver em tela cheia
                                 </li>
                                 <li>
                                     • <strong>PDF:</strong> Use o botão "Exportar PDF" para gerar versão para impressão
@@ -153,9 +237,52 @@ const App: React.FC = () => {
                             </ul>
                         </div>
 
+                        {/* Legenda de cores dos obstáculos */}
+                        <div className="p-4 bg-white border border-gray-300 rounded-lg shadow-sm h-min">
+                            <h3 className="font-semibold text-gray-800 mb-2">Legenda de Obstáculos:</h3>
+                            <div className="space-y-2 text-sm">
+                                <div className="flex items-center gap-2">
+                                    <div className="w-4 h-4 border" style={{ backgroundColor: '#E3F2FD' }}></div>
+                                    <span>Laboratórios</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <div className="w-4 h-4 border" style={{ backgroundColor: '#FFF8E1' }}></div>
+                                    <span>Salas de Aula</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <div className="w-4 h-4 border" style={{ backgroundColor: '#FFF3E0' }}></div>
+                                    <span>Banheiros</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <div className="w-4 h-4 border" style={{ backgroundColor: '#8D6E63' }}></div>
+                                    <span>Mesas</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <div className="w-4 h-4 border" style={{ backgroundColor: '#5D4037' }}></div>
+                                    <span>Cadeiras</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <div className="w-4 h-4 border" style={{ backgroundColor: '#ECEFF1' }}></div>
+                                    <span>Escadas</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <div className="w-4 h-4 border" style={{ backgroundColor: '#CFD8DC' }}></div>
+                                    <span>Elevador</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <div className="w-4 h-4 border" style={{ backgroundColor: '#795548' }}></div>
+                                    <span>Armários</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <div className="w-4 h-4 border" style={{ backgroundColor: '#F5F5F5' }}></div>
+                                    <span>Corredor</span>
+                                </div>
+                            </div>
+                        </div>
+
                         {/* Lista de obstáculos usando valores de values.ts */}
                         <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg shadow-sm h-min">
-                            <h3 className="font-semibold text-gray-800 mb-2">Obstáculos a serem adicionados:</h3>
+                            <h3 className="font-semibold text-gray-800 mb-2">Obstáculos posicionados:</h3>
                             <div className="text-sm text-gray-700 space-y-2">
                                 <p>
                                     <strong>Mesas [M1, M2]:</strong> {obstacles.mesa.width.toFixed(2)} ×{' '}
@@ -189,11 +316,15 @@ const App: React.FC = () => {
                                 </p>
                                 <p>
                                     <strong>Banheiro cadeirante [{obstacles.banheiro[2].id}]:</strong>{' '}
-                                    {obstacles.banheiro[2].width.toFixed(2)} × {obstacles.banheiro[2].height.toFixed(2)}m
+                                    {obstacles.banheiro[2].width.toFixed(2)} × {obstacles.banheiro[2].height.toFixed(2)}
+                                    m
                                 </p>
                                 <p>
-                                    <strong>Banheiros [{obstacles.banheiro[0].id}, {obstacles.banheiro[1].id}]:</strong>{' '}
-                                    {obstacles.banheiro[0].width.toFixed(2)} × {obstacles.banheiro[0].height.toFixed(2)}m
+                                    <strong>
+                                        Banheiros [{obstacles.banheiro[0].id}, {obstacles.banheiro[1].id}]:
+                                    </strong>{' '}
+                                    {obstacles.banheiro[0].width.toFixed(2)} × {obstacles.banheiro[0].height.toFixed(2)}
+                                    m
                                 </p>
                                 <p>
                                     <strong>Escadas [E1, E2]:</strong> {obstacles.escada.width.toFixed(2)} ×{' '}
@@ -214,6 +345,7 @@ const App: React.FC = () => {
                     onClose={() => setIsModalOpen(false)}
                     width={gridValues.width}
                     height={gridValues.height}
+                    obstacles={obstaclePositions}
                 />
             </div>
         </div>
