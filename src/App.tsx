@@ -1,35 +1,29 @@
 import React from 'react';
-import { exportToPDF } from './utils/pdfExport';
+// Utils
+import { exportToPDF } from './utils/pdfExport'; // Função para exportar o grid como PDF
+// Componentes
+import Grid from './components/Grid';
 import GridViewModal from './components/GridViewModal';
-import { gridValues } from './config/values';
-import { obstaclePositions } from './config/obstaclePositions';
 import InfoSections from './components/InfoSections';
+// Configurações
+import { gridValues } from './config/values'; // Valores de largura e altura do grid
+import { obstaclePositions } from './config/obstaclePositions'; // Posições dos obstáculos no grid
 
 const App: React.FC = () => {
     const [isExporting, setIsExporting] = React.useState(false);
     const [isModalOpen, setIsModalOpen] = React.useState(false);
 
-    // Criar array de células usando gridValues
-    const cells = Array.from({ length: gridValues.height }, (_, row) =>
-        Array.from({ length: gridValues.width }, (_, col) => ({ row, col })),
-    );
-
     const handleExport = () => {
         setIsExporting(true);
-
         try {
             exportToPDF(gridValues.width, gridValues.height, obstaclePositions);
-
-            setTimeout(() => {
-                setIsExporting(false);
-            }, 1500);
+            setTimeout(() => setIsExporting(false), 1500);
         } catch (error) {
             console.error('Error in export:', error);
             setIsExporting(false);
         }
     };
 
-    // Calcula a área total uma vez para uso em vários locais
     const totalArea = gridValues.width * gridValues.height;
 
     return (
@@ -46,111 +40,20 @@ const App: React.FC = () => {
                     </p>
                 </div>
 
-                {/* Flexbox container for grid and info sections */}
                 <div className="flex flex-col lg:flex-row gap-4">
-                    {/* Grid section - Left Column */}
+                    {/* Grid section */}
                     <div className="lg:w-fit">
-                        {/* Container com scroll horizontal único para coordenadas e grid */}
                         <div className="overflow-x-auto bg-white border border-gray-300 rounded-lg shadow-sm">
-                            <div className="min-w-max relative">
-                                {/* Coordenadas superiores (X) - dentro do mesmo container de scroll */}
-                                <div className="flex mb-1">
-                                    <div className="w-8"></div>
-                                    {gridValues.coordinatesX.map((x) => (
-                                        <div
-                                            key={x}
-                                            className="w-4 h-4 text-xs text-center text-gray-500"
-                                            style={{ fontSize: '12px' }}
-                                        >
-                                            {x}
-                                        </div>
-                                    ))}
-                                </div>
-
-                                {/* Grid com obstáculos */}
-                                <div className="relative">
-                                    {/* Grid base (células vazias) */}
-                                    {cells.map((row, rowIndex) => (
-                                        <div key={rowIndex} className="flex">
-                                            {/* Coordenada Y (lateral esquerda) */}
-                                            <div className="sticky left-0 w-8 h-4 text-xs flex items-center justify-center text-gray-500 bg-gray-100 z-10 border-r border-gray-300">
-                                                {rowIndex}
-                                            </div>
-
-                                            {/* Células do grid vazias */}
-                                            {row.map((cell, colIndex) => (
-                                                <div
-                                                    key={`${cell.row}-${cell.col}`}
-                                                    className="w-4 h-4 border border-gray-300 hover:bg-blue-100 cursor-pointer transition-colors"
-                                                    title={`Posição: (${colIndex}, ${rowIndex})`}
-                                                />
-                                            ))}
-                                        </div>
-                                    ))}
-
-                                    {/* Obstáculos renderizados como elementos absolutos */}
-                                    {obstaclePositions.map((obstacle) => {
-                                        const left = 32 + obstacle.x * 16; // 32px = w-8 (coordenadas Y) + obstacle.x * 16px (w-4)
-                                        const top = obstacle.y * 16; // obstacle.y * 16px (h-4)
-                                        const width = obstacle.width * 16; // largura real * 16px
-                                        const height = obstacle.height * 16; // altura real * 16px
-
-                                        return (
-                                            <div
-                                                key={obstacle.id}
-                                                className="absolute pointer-events-none border border-gray-600"
-                                                style={{
-                                                    left: `${left}px`,
-                                                    top: `${top}px`,
-                                                    width: `${width}px`,
-                                                    height: `${height}px`,
-                                                    backgroundColor: obstacle.color,
-                                                    opacity: 0.8,
-                                                    zIndex: 5,
-                                                }}
-                                                title={`${obstacle.id} - ${obstacle.label.replace(
-                                                    '\n',
-                                                    ' ',
-                                                )} (${obstacle.width.toFixed(2)}m x ${obstacle.height.toFixed(2)}m)`}
-                                            >
-                                                {/* Label do obstáculo */}
-                                                <div
-                                                    className="absolute inset-0 flex items-center justify-center text-gray-800 font-bold pointer-events-none"
-                                                    style={{
-                                                        fontSize:
-                                                            obstacle.type === 'cadeira'
-                                                                ? '8px'
-                                                                : width < 50
-                                                                ? '6px'
-                                                                : '9px',
-                                                        lineHeight: '1.1',
-                                                        textAlign: 'center',
-                                                        whiteSpace: 'pre-line',
-                                                        textShadow:
-                                                            obstacle.type === 'cadeira' ? '0 0 2px white' : 'none',
-                                                        color: obstacle.type === 'cadeira' ? '#000' : '#333',
-                                                    }}
-                                                >
-                                                    {obstacle.label}
-                                                </div>
-
-                                                {/* Círculo especial para cadeiras (como no PDF) */}
-                                                {obstacle.type === 'cadeira' && (
-                                                    <div
-                                                        className="absolute rounded-full bg-gray-700 opacity-60"
-                                                        style={{
-                                                            width: `${Math.min(width, height) / 3}px`,
-                                                            height: `${Math.min(width, height) / 3}px`,
-                                                            left: '50%',
-                                                            top: '50%',
-                                                            transform: 'translate(-50%, -50%)',
-                                                        }}
-                                                    />
-                                                )}
-                                            </div>
-                                        );
-                                    })}
-                                </div>
+                            <div className="min-w-max relative p-2">
+                                <Grid
+                                    width={gridValues.width}
+                                    height={gridValues.height}
+                                    obstacles={obstaclePositions}
+                                    cellSize={16}
+                                    coordinateColumnWidth={32}
+                                    className="sticky left-0"
+                                    isOpen={isModalOpen}
+                                />
                             </div>
                         </div>
 
@@ -174,8 +77,8 @@ const App: React.FC = () => {
                             <button
                                 onClick={handleExport}
                                 disabled={isExporting}
-                                className={`bg-gray-800 hover:bg-gray-900 text-white text-base font-semibold py-2 px-6 rounded-lg shadow-md transition-colors duration-200 flex items-center gap-2 ${
-                                    isExporting ? 'opacity-75 cursor-not-allowed' : 'hover:cursor-pointer'
+                                className={`bg-gray-800 hover:bg-gray-900 text-white text-base font-semibold py-2 px-6 rounded-lg shadow-md transition-colors duration-200 flex items-center gap-2 hover:cursor-pointer ${
+                                    isExporting ? 'opacity-75 cursor-not-allowed' : ''
                                 }`}
                             >
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -191,13 +94,12 @@ const App: React.FC = () => {
                         </div>
                     </div>
 
-                    {/* Info sections - Right Column */}
+                    {/* Info sections */}
                     <div className="w-fit flex-shrink-0 ml-10 hidden md:block">
                         <InfoSections obstaclePositions={obstaclePositions} />
                     </div>
                 </div>
 
-                {/* Modal de visualização */}
                 <GridViewModal
                     isOpen={isModalOpen}
                     onClose={() => setIsModalOpen(false)}
