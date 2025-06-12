@@ -1,10 +1,13 @@
 import React from 'react';
-import { exportToPDF } from './utils/pdfExport';
-import GridViewModal from './components/GridViewModal';
-import { gridValues } from './config/values';
-import { obstaclePositions } from './config/obstaclePositions';
-import InfoSections from './components/InfoSections';
+// Utils
+import { exportToPDF } from './utils/pdfExport'; // Função para exportar o grid como PDF
+// Componentes
 import Grid from './components/Grid';
+import GridViewModal from './components/GridViewModal';
+import InfoSections from './components/InfoSections';
+// Configurações
+import { gridValues } from './config/values'; // Valores de largura e altura do grid
+import { obstaclePositions } from './config/obstaclePositions'; // Posições dos obstáculos no grid
 
 const App: React.FC = () => {
     const [isExporting, setIsExporting] = React.useState(false);
@@ -46,7 +49,7 @@ const App: React.FC = () => {
                                     width={gridValues.width}
                                     height={gridValues.height}
                                     obstacles={obstaclePositions}
-                                    cellSize={16} 
+                                    cellSize={16}
                                     coordinateColumnWidth={32}
                                     className="sticky left-0"
                                     isOpen={isModalOpen}

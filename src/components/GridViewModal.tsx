@@ -1,7 +1,11 @@
 import React, { useEffect, useState } from 'react';
+// Types
 import { type ObstaclePosition } from '../config/obstaclePositions';
+// Configurações
 import { gridValues } from '../config/values';
+// Hooks
 import { useGridControls } from '../hooks/useGridControls';
+// Componentes
 import Grid from './Grid';
 import ModalHeader from './ModalHeader';
 import ModalInstructions from './ModalInstructions';

@@ -1,4 +1,5 @@
 import React from 'react';
+// Configurações
 import { gridValues } from '../config/values';
 import { type ObstaclePosition } from '../config/obstaclePositions';
 

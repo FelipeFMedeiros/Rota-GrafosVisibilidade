@@ -1,4 +1,5 @@
 import React from 'react';
+// Types
 import { type ObstaclePosition } from '../config/obstaclePositions';
 
 interface GridObstaclesProps {

@@ -1,4 +1,6 @@
+// Lib de exportação para PDF
 import jsPDF from 'jspdf';
+// Configurações
 import { gridValues } from '../config/values';
 import { type ObstaclePosition } from '../config/obstaclePositions';
 

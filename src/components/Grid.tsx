@@ -1,6 +1,8 @@
 import React from 'react';
-import { type ObstaclePosition } from '../config/obstaclePositions';
+// Types
 import GridObstacles from './GridObstacles';
+import { type ObstaclePosition } from '../config/obstaclePositions';
+// Componentes
 
 interface GridProps {
     width: number;
