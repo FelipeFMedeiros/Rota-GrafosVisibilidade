@@ -1,8 +1,9 @@
 import React from 'react';
 import { exportToPDF } from './utils/pdfExport';
 import GridViewModal from './components/GridViewModal';
-import { gridValues, obstacles } from './config/values';
+import { gridValues } from './config/values';
 import { obstaclePositions } from './config/obstaclePositions';
+import InfoSections from './components/InfoSections';
 
 const App: React.FC = () => {
     const [isExporting, setIsExporting] = React.useState(false);
@@ -17,13 +18,10 @@ const App: React.FC = () => {
         setIsExporting(true);
 
         try {
-            console.log('Starting PDF export...');
             exportToPDF(gridValues.width, gridValues.height, obstaclePositions);
-            console.log('PDF export function called');
 
             setTimeout(() => {
                 setIsExporting(false);
-                console.log('Export state reset');
             }, 1500);
         } catch (error) {
             console.error('Error in export:', error);
@@ -51,7 +49,7 @@ const App: React.FC = () => {
                 {/* Flexbox container for grid and info sections */}
                 <div className="flex flex-col lg:flex-row gap-4">
                     {/* Grid section - Left Column */}
-                    <div className="lg:w-2/3">
+                    <div className="lg:w-fit">
                         {/* Container com scroll horizontal único para coordenadas e grid */}
                         <div className="overflow-x-auto bg-white border border-gray-300 rounded-lg shadow-sm">
                             <div className="min-w-max relative">
@@ -194,133 +192,8 @@ const App: React.FC = () => {
                     </div>
 
                     {/* Info sections - Right Column */}
-                    <div className="lg:w-1/3 space-y-4">
-                        {/* Legenda */}
-                        <div className="p-4 bg-white border border-gray-300 rounded-lg shadow-sm h-min">
-                            <h3 className="font-semibold text-gray-800 mb-2">Informações:</h3>
-                            <ul className="text-sm text-gray-600 space-y-1">
-                                <li>
-                                    • <strong>Área total:</strong> {totalArea}m² ({gridValues.width}m ×{' '}
-                                    {gridValues.height}m)
-                                </li>
-                                <li>
-                                    • <strong>Cada célula:</strong> Representa 1m²
-                                </li>
-                                <li>
-                                    • <strong>Coordenadas:</strong> X (horizontal) de 0-{gridValues.width - 1}, Y
-                                    (vertical) de 0-{gridValues.height - 1}
-                                </li>
-                                <li>
-                                    • <strong>Obstáculos:</strong> {obstaclePositions.length} elementos posicionados
-                                </li>
-                                <li>
-                                    • <strong>Visualização:</strong> Use o botão "Visualizar" para ver em tela cheia
-                                </li>
-                                <li>
-                                    • <strong>PDF:</strong> Use o botão "Exportar PDF" para gerar versão para impressão
-                                </li>
-                            </ul>
-                        </div>
-
-                        {/* Legenda de cores dos obstáculos */}
-                        <div className="p-4 bg-white border border-gray-300 rounded-lg shadow-sm h-min">
-                            <h3 className="font-semibold text-gray-800 mb-2">Legenda de Obstáculos:</h3>
-                            <div className="space-y-2 text-sm">
-                                <div className="flex items-center gap-2">
-                                    <div className="w-4 h-4 border" style={{ backgroundColor: '#E3F2FD' }}></div>
-                                    <span>Laboratórios</span>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <div className="w-4 h-4 border" style={{ backgroundColor: '#FFF8E1' }}></div>
-                                    <span>Salas de Aula</span>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <div className="w-4 h-4 border" style={{ backgroundColor: '#FFF3E0' }}></div>
-                                    <span>Banheiros</span>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <div className="w-4 h-4 border" style={{ backgroundColor: '#8D6E63' }}></div>
-                                    <span>Mesas</span>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <div className="w-4 h-4 border" style={{ backgroundColor: '#5D4037' }}></div>
-                                    <span>Cadeiras</span>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <div className="w-4 h-4 border" style={{ backgroundColor: '#ECEFF1' }}></div>
-                                    <span>Escadas</span>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <div className="w-4 h-4 border" style={{ backgroundColor: '#CFD8DC' }}></div>
-                                    <span>Elevador</span>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <div className="w-4 h-4 border" style={{ backgroundColor: '#795548' }}></div>
-                                    <span>Armários</span>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <div className="w-4 h-4 border" style={{ backgroundColor: '#F5F5F5' }}></div>
-                                    <span>Corredor</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Lista de obstáculos usando valores de values.ts */}
-                        <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg shadow-sm h-min">
-                            <h3 className="font-semibold text-gray-800 mb-2">Obstáculos posicionados:</h3>
-                            <div className="text-sm text-gray-700 space-y-2">
-                                <p>
-                                    <strong>Mesas [M1, M2]:</strong> {obstacles.mesa.width.toFixed(2)} ×{' '}
-                                    {obstacles.mesa.height.toFixed(2)}m
-                                </p>
-                                <p>
-                                    <strong>Cadeiras [C1-C8]:</strong> {obstacles.cadeira.width.toFixed(2)} ×{' '}
-                                    {obstacles.cadeira.height.toFixed(2)}m
-                                </p>
-                                <p>
-                                    <strong>Armários [A1, A2]:</strong> {obstacles.armario.width.toFixed(2)} ×{' '}
-                                    {obstacles.armario.height.toFixed(2)}m
-                                </p>
-                                <p>
-                                    <strong>Laboratório 1 [{obstacles.laboratorio[0].id}]:</strong>{' '}
-                                    {obstacles.laboratorio[0].width.toFixed(2)} ×{' '}
-                                    {obstacles.laboratorio[0].height.toFixed(2)}m
-                                </p>
-                                <p>
-                                    <strong>Laboratório 2 [{obstacles.laboratorio[1].id}]:</strong>{' '}
-                                    {obstacles.laboratorio[1].width.toFixed(2)} ×{' '}
-                                    {obstacles.laboratorio[1].height.toFixed(2)}m
-                                </p>
-                                <p>
-                                    <strong>Corredor:</strong> {obstacles.corredor.width.toFixed(2)} ×{' '}
-                                    {obstacles.corredor.height.toFixed(2)}m
-                                </p>
-                                <p>
-                                    <strong>Salas [S1, S2]:</strong> {obstacles.sala.width.toFixed(2)} ×{' '}
-                                    {obstacles.sala.height.toFixed(2)}m
-                                </p>
-                                <p>
-                                    <strong>Banheiro cadeirante [{obstacles.banheiro[2].id}]:</strong>{' '}
-                                    {obstacles.banheiro[2].width.toFixed(2)} × {obstacles.banheiro[2].height.toFixed(2)}
-                                    m
-                                </p>
-                                <p>
-                                    <strong>
-                                        Banheiros [{obstacles.banheiro[0].id}, {obstacles.banheiro[1].id}]:
-                                    </strong>{' '}
-                                    {obstacles.banheiro[0].width.toFixed(2)} × {obstacles.banheiro[0].height.toFixed(2)}
-                                    m
-                                </p>
-                                <p>
-                                    <strong>Escadas [E1, E2]:</strong> {obstacles.escada.width.toFixed(2)} ×{' '}
-                                    {obstacles.escada.height.toFixed(2)}m
-                                </p>
-                                <p>
-                                    <strong>Elevador [{obstacles.elevador.id}]:</strong>{' '}
-                                    {obstacles.elevador.width.toFixed(2)} × {obstacles.elevador.height.toFixed(2)}m
-                                </p>
-                            </div>
-                        </div>
+                    <div className="w-fit flex-shrink-0 ml-10 hidden md:block">
+                        <InfoSections obstaclePositions={obstaclePositions} />
                     </div>
                 </div>
 

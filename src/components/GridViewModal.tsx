@@ -260,15 +260,16 @@ const GridViewModal: React.FC<GridViewModalProps> = ({ isOpen, onClose, width, h
                         </button>
                     </div>
                 </div>
-
                 {/* Área do grid otimizada */}
                 <div
                     ref={containerRef}
-                    className="w-full h-full pt-14 sm:pt-16 overflow-hidden cursor-move"
+                    className="w-full h-full pt-14 sm:pt-16 overflow-hidden cursor-move select-none"
                     onMouseDown={handleMouseDown}
                     onMouseMove={handleMouseMove}
                     onMouseUp={handleMouseUp}
                     onMouseLeave={handleMouseUp}
+                    style={{ userSelect: 'none' }}
+                    draggable={false}
                 >
                     <div
                         className="flex flex-col items-center justify-center h-full"
@@ -387,7 +388,6 @@ const GridViewModal: React.FC<GridViewModalProps> = ({ isOpen, onClose, width, h
                         </div>
                     </div>
                 </div>
-
                 {/* Instruções recolhíveis responsivas */}
                 <div className="absolute bottom-4 left-4 max-w-xs md:max-w-md">
                     <div className="bg-black bg-opacity-75 rounded overflow-hidden">
