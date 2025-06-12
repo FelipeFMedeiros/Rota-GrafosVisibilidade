@@ -1,52 +1,16 @@
-import React, { useEffect, useRef, useState, useCallback, memo } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { type ObstaclePosition } from '../config/obstaclePositions';
+import { gridValues } from '../config/values';
 
 interface GridViewModalProps {
     isOpen: boolean;
     onClose: () => void;
     width: number;
     height: number;
+    obstacles?: ObstaclePosition[];
 }
 
-// Componente para célula individual do grid (memoizado)
-const GridCell = memo(({ colIndex, rowIndex }: { colIndex: number; rowIndex: number }) => {
-    return (
-        <div
-            className="border border-gray-300 hover:bg-blue-100 transition-colors"
-            style={{
-                width: '20px',
-                height: '20px',
-            }}
-            title={`Posição: (${colIndex}, ${rowIndex})`}
-        />
-    );
-});
-
-// Componente para linha do grid (memoizado)
-const GridRow = memo(
-    ({ row, rowIndex, cellSize }: { row: { row: number; col: number }[]; rowIndex: number; cellSize: number }) => {
-        return (
-            <div className="flex">
-                {/* Coordenada Y (lateral esquerda) */}
-                <div
-                    className="text-xs flex items-center justify-center text-gray-600 bg-gray-100 border-r border-gray-300 font-mono"
-                    style={{
-                        width: `${cellSize * 2}px`,
-                        height: `${cellSize}px`,
-                    }}
-                >
-                    {rowIndex}
-                </div>
-
-                {/* Células do grid */}
-                {row.map((_, colIndex) => (
-                    <GridCell key={`cell-${rowIndex}-${colIndex}`} colIndex={colIndex} rowIndex={rowIndex} />
-                ))}
-            </div>
-        );
-    },
-);
-
-const GridViewModal: React.FC<GridViewModalProps> = ({ isOpen, onClose, width, height }) => {
+const GridViewModal: React.FC<GridViewModalProps> = ({ isOpen, onClose, width, height, obstacles = [] }) => {
     const [zoom, setZoom] = useState(1);
     const [pan, setPan] = useState({ x: 0, y: 0 });
     const [isDragging, setIsDragging] = useState(false);
@@ -220,7 +184,7 @@ const GridViewModal: React.FC<GridViewModalProps> = ({ isOpen, onClose, width, h
 
     if (!isOpen) return null;
 
-    const cellSize = 20; // Tamanho base da célula
+    const cellSize = gridValues.cellSize; // Tamanho base da célula
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-75 z-50 flex items-center justify-center">
@@ -296,15 +260,16 @@ const GridViewModal: React.FC<GridViewModalProps> = ({ isOpen, onClose, width, h
                         </button>
                     </div>
                 </div>
-
                 {/* Área do grid otimizada */}
                 <div
                     ref={containerRef}
-                    className="w-full h-full pt-14 sm:pt-16 overflow-hidden cursor-move"
+                    className="w-full h-full pt-14 sm:pt-16 overflow-hidden cursor-move select-none"
                     onMouseDown={handleMouseDown}
                     onMouseMove={handleMouseMove}
                     onMouseUp={handleMouseUp}
                     onMouseLeave={handleMouseUp}
+                    style={{ userSelect: 'none' }}
+                    draggable={false}
                 >
                     <div
                         className="flex flex-col items-center justify-center h-full"
@@ -315,10 +280,10 @@ const GridViewModal: React.FC<GridViewModalProps> = ({ isOpen, onClose, width, h
                             willChange: 'transform',
                         }}
                     >
-                        {/* Coordenadas superiores (X) - otimizadas */}
+                        {/* Coordenadas superiores (X) */}
                         <div className="flex mb-2">
                             <div style={{ width: `${cellSize * 2}px` }}></div>
-                            {Array.from({ length: Math.min(width, 100) }, (_, i) => (
+                            {Array.from({ length: width }, (_, i) => (
                                 <div
                                     key={i}
                                     className="text-xs text-center text-gray-600 font-mono flex items-center justify-center"
@@ -332,15 +297,97 @@ const GridViewModal: React.FC<GridViewModalProps> = ({ isOpen, onClose, width, h
                             ))}
                         </div>
 
-                        {/* Grid principal com coordenadas laterais - otimizado */}
-                        <div className="border-2 border-gray-800 bg-white">
+                        {/* Grid principal com coordenadas laterais */}
+                        <div className="border-2 border-gray-800 bg-white relative">
+                            {/* Grid base (células vazias) */}
                             {cells.map((row, rowIndex) => (
-                                <GridRow key={`row-${rowIndex}`} row={row} rowIndex={rowIndex} cellSize={cellSize} />
+                                <div key={rowIndex} className="flex">
+                                    {/* Coordenada Y (lateral esquerda) */}
+                                    <div
+                                        className="text-xs flex items-center justify-center text-gray-600 bg-gray-100 border-r border-gray-300 font-mono"
+                                        style={{
+                                            width: `${cellSize * 2}px`,
+                                            height: `${cellSize}px`,
+                                        }}
+                                    >
+                                        {rowIndex}
+                                    </div>
+
+                                    {/* Células do grid vazias */}
+                                    {row.map((cell, colIndex) => (
+                                        <div
+                                            key={`${cell.row}-${cell.col}`}
+                                            className="border border-gray-300 hover:bg-blue-100 cursor-pointer transition-colors"
+                                            style={{
+                                                width: `${cellSize}px`,
+                                                height: `${cellSize}px`,
+                                            }}
+                                            title={`Posição: (${colIndex}, ${rowIndex})`}
+                                        />
+                                    ))}
+                                </div>
                             ))}
+
+                            {/* Obstáculos renderizados como elementos absolutos */}
+                            {obstacles.map((obstacle) => {
+                                const left = cellSize * 2 + obstacle.x * cellSize; // cellSize * 2 = largura das coordenadas Y
+                                const top = obstacle.y * cellSize;
+                                const width = obstacle.width * cellSize;
+                                const height = obstacle.height * cellSize;
+
+                                return (
+                                    <div
+                                        key={obstacle.id}
+                                        className="absolute pointer-events-none border border-gray-600"
+                                        style={{
+                                            left: `${left}px`,
+                                            top: `${top}px`,
+                                            width: `${width}px`,
+                                            height: `${height}px`,
+                                            backgroundColor: obstacle.color,
+                                            opacity: 0.8,
+                                            zIndex: 5,
+                                        }}
+                                        title={`${obstacle.id} - ${obstacle.label.replace(
+                                            '\n',
+                                            ' ',
+                                        )} (${obstacle.width.toFixed(2)}m x ${obstacle.height.toFixed(2)}m)`}
+                                    >
+                                        {/* Label do obstáculo */}
+                                        <div
+                                            className="absolute inset-0 flex items-center justify-center text-gray-800 font-bold pointer-events-none"
+                                            style={{
+                                                fontSize:
+                                                    obstacle.type === 'cadeira' ? '10px' : width < 60 ? '8px' : '12px',
+                                                lineHeight: '1.1',
+                                                textAlign: 'center',
+                                                whiteSpace: 'pre-line',
+                                                textShadow: obstacle.type === 'cadeira' ? '0 0 2px white' : 'none',
+                                                color: obstacle.type === 'cadeira' ? '#000' : '#333',
+                                            }}
+                                        >
+                                            {obstacle.label}
+                                        </div>
+
+                                        {/* Círculo especial para cadeiras (como no PDF) */}
+                                        {obstacle.type === 'cadeira' && (
+                                            <div
+                                                className="absolute rounded-full bg-gray-700 opacity-60"
+                                                style={{
+                                                    width: `${Math.min(width, height) / 3}px`,
+                                                    height: `${Math.min(width, height) / 3}px`,
+                                                    left: '50%',
+                                                    top: '50%',
+                                                    transform: 'translate(-50%, -50%)',
+                                                }}
+                                            />
+                                        )}
+                                    </div>
+                                );
+                            })}
                         </div>
                     </div>
                 </div>
-
                 {/* Instruções recolhíveis responsivas */}
                 <div className="absolute bottom-4 left-4 max-w-xs md:max-w-md">
                     <div className="bg-black bg-opacity-75 rounded overflow-hidden">
